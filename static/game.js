@@ -1,10 +1,12 @@
 var socket = io();
 var playerId = null;
 
-const MIN_PLAYERS = 3;
+const MIN_PLAYERS = 1;
 const PLAYER_TIC = 1000/10;
 var players_list = document.getElementById('player_list').getElementsByTagName('ul')[0];
-var class_list = document.getElementById('player_list').getElementsByTagName('ul')[1];
+var class_list = document.getElementById('results_list').getElementsByTagName('ul')[0];
+
+var race_sector = document.getElementById('race_sector');
 
 var current_power = document.getElementById('c_power');
 var act_power = document.getElementById('act_power');
@@ -17,10 +19,11 @@ var act_speed = document.getElementById('act_speed');
 var avg_speed = document.getElementById('avg_speed');
 var act_ramp = document.getElementById('act_ramp');
 var race_time = document.getElementById('race_time');
-var km_total = document.getElementById('km_total');
+//var km_total = document.getElementById('km_total');
 var km_finish = document.getElementById('km_finish');
 
 var start_button = document.getElementById('start_button');
+var reset_button = document.getElementById('reset_button');
 
 var players = {};
 
@@ -29,7 +32,7 @@ var players = {};
 socket.on('connect', function() {
     const sessionID = socket.id; //
     playerId = sessionID;
-    console.log("Player ID: " + playerId + "connected");
+    //console.log("Player ID: " + playerId + "connected");
   });
 
 //io.on('connection', function(socket) {
@@ -43,12 +46,12 @@ socket.on('disconnect', function() {
         
     //}
     delete players [playerId];
-    console.log("Player ID: " + playerId + "disconnected");
+    //console.log("Player ID: " + playerId + "disconnected");
 });
 //});
 
 socket.on('new player', function(data){
-    if (data[playerId].master == true && Object.keys(players).length >= MIN_PLAYERS){
+    if (data[playerId].master == true && Object.keys(data).length >= MIN_PLAYERS){
         start_button.style = "display:block";
         start_button.disabled = false;
     }
@@ -64,28 +67,35 @@ current_power.addEventListener('input', function () {
 socket.emit('new player');
 setInterval(function() {
   socket.emit('strategy', strategy);
-  console.log(strategy);
+  //console.log(strategy);
 }, PLAYER_TIC);
 
 
-formatTime = function(seconds){
-//    return new Date(seconds).toISOString().substr(11, 8);
+formatTime = function(millis){
+        var minutes = Math.floor(millis / 60000);
+        var seconds = ((millis % 60000) / 1000).toFixed(0);
+        return minutes + ":" + (seconds < 10 ? '0' : '') + seconds;
 }
 
 start_button.addEventListener('click', function(){
-    if (data[playerId].master == true && players.length >= MIN_PLAYERS){
+    if (players[playerId].master == true && Object.keys(players).length >= MIN_PLAYERS){
         socket.emit('game_start', true);
     }
+});
+
+reset_button.addEventListener('click', function(){
+    socket.emit('game_reset', true);
 })
 
 
 socket.on('state', function(game) {
-    console.log(game);
+    //console.log(game);
     race = game.race;
-    km_total.innerHTML = race.km_total;
-    race_time.innerHTML = formatTime(race.race_time);
+    //km_total.innerHTML = race.km_total;
+    race_time.innerHTML = formatTime(race.used_t);
+    turn_time.innerHTML = formatTime(race.remain_t);
+    race_sector.innerHTML = game.race.sector;
 
-    groups = game.groups;
     players = game.players;
     
     players_list.innerHTML = "";
@@ -98,13 +108,13 @@ socket.on('state', function(game) {
         // context.arc(player.x, player.y, 10, 0, 2 * Math.PI);
         // context.fill();
         
-         if(id == playerId){
+        if(id == playerId){
         //     if(player.power != null){
         //         current_power.value = player.power.toFixed(2);
         //         act_power.innerHTML = player.power.toFixed(2);
         //         avg_power.innerHTML = player.avg_power.toFixed(2);
-        //         aero_bar.value = Math.floor(player.aero/100).toFixed(2);
-        //         anaero_bar.value = Math.floor(player.anaero/100).toFixed(2);
+                aero_bar.value = Math.floor(player.aero).toFixed(2);
+                anaero_bar.value = Math.floor(player.anaero).toFixed(2);
         //         act_speed.innerHTML = player.speed.toFixed(2);
         //         avg_speed.innerHTML = player.avg_speed.toFixed(2);
         //         act_ramp.innerHTML = Math.floor(player.ramp).toFixed(2);
@@ -116,20 +126,23 @@ socket.on('state', function(game) {
         //         prof_context.arc(Math.floor(player.stage_pos*profile_canvas.width/race.km_total), 25, 10, 0, 2 * Math.PI);
         //         prof_context.fill();
         //     }
-             players_list.innerHTML += "<li class='active'>"+player.name +"</li>";
-         }else{
-             players_list.innerHTML += "<li >"+player.name+"</li>";
+            players_list.innerHTML += "<li class='active'>"+player.name +"</li>";
+        }else{
+            players_list.innerHTML += "<li >"+player.name+"</li>";
         //     prof_context.fillStyle = player.color;
         //     prof_context.beginPath();
         //     prof_context.arc(Math.floor(player.stage_pos*profile_canvas.width/race.km_total), 25, 5, 0, 2 * Math.PI);
         //     prof_context.fill();
-         }
-  }
+        }
+    }
 
-  class_list.innerHTML = "";
-  for(var id in race?.classification){
-    class_list.innerHTML += "<li >" + race.classification[id].name + " - " + formatTime(race.classification[id].race_time) + "</li>";
-  }
+    class_list.innerHTML = "";
+    for(var id in race?.classification){
+        class_list.innerHTML += "<li >" + race.classification[id].name + " - " + formatTime(race.classification[id].race_time) + "</li>";
+    }
+    if(race.state ==2){
+        reset_button.disabled = false;
+    }
 });
 
 
