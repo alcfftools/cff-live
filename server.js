@@ -155,10 +155,6 @@ io.on('connection', function(socket) {
 });
 
 setInterval(function() {
-    game = {
-        'race': race,
-        'players' : players
-    };
     if(STATE == 1){
         refreshGameTimer();
         refreshPlayerValues(player);
@@ -179,16 +175,16 @@ setInterval(function() {
   refreshPlayerValues = function(player){
 
   }
-  refreshGameTimer()= function(){
+  refreshGameTimer = function(){
     game.race.used_t += 1000/REFRESH_RATE;
     game.race.remain_t -= 1000/REFRESH_RATE;
   }
-  checkEndSector() = function(){
+  checkEndSector = function(){
     if(game.race.remain_t <= 0 ){
         
     }
   }
-  checkEndRace() = function(){
+  checkEndRace = function(){
     if(game.sector >= NUM_SECTORS){
         return true;
     }
