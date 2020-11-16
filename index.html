@@ -1,0 +1,67 @@
+<html>
+  <head>
+    <title>A Multiplayer Cycling Game</title>
+    <style>
+      #control_panel {
+          margin-top: 5px;
+
+      }
+
+      progress {
+      }
+      li.active{
+          font-weight: bold;
+      }
+      #stage_header {
+          float:left;
+      }
+      #player_list {
+          float:right;  
+      }
+
+      #control_panel{
+          width: 70%;
+          display:inline-block;
+      }
+      button#start_button: {
+          display: none;
+      }
+
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <div id="stage_header">
+        <h3> Paris Nice - Stage 2 - Race Time <span id="race_time">0h 0min 0s</span></h3>
+        <p> Total kms: <span id="km_total"></span>. Km a meta <span id="km_finish"></span></p>
+        <!--<canvas id="canvas"></canvas>-->
+    </div>
+    <div id="player_list">
+        <button id="start_button" disabled>Start Race:</button>
+        Connected Riders:
+        <ul></ul>
+        Classification:
+        <ul></ul>
+    </div>    
+    
+    <div id="profile"><img src="https://cyclingforfun.org/cff/etapas/vence.jpg"></img></div>
+    
+    <div id="control_panel">
+        <div style="width:50%;float:left;">
+            <p> Current Power <input type="range" min="0" max="100" value="60" class="slider" id="c_power"><span id="act_power">60</span> %</p>
+            <!--<p > Average Power <span id="avg_power">0</span> Watt</p>-->
+        </div> 
+        <div style="width:50%;float:right;">    
+            <p > Current Speed <span id="act_speed">0</span> Km/h on ramp <span id="act_ramp">0</span> %</p>
+            <p > Average Speed <span id="avg_speed">0</span> km/h</p>
+        </div> 
+        <div> 
+            <progress id="aero" max="100" value="100" ></progress> <span>Aerobic Stamina</span> 
+            <br/>
+            <progress id="anaero" max="100" value="100" ></progress> <span>Anaerobic Stamina</span>
+        </div> 
+    </div>
+    
+  </body>
+  <script src="/static/game.js"></script>
+</html>

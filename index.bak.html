@@ -1,0 +1,78 @@
+<html>
+  <head>
+    <title>CFF Multiplayer Live Game</title>
+    <style>
+      #canvas {
+        width: 1200;
+        height: 400;
+        border: 5px solid black;
+      }
+      profile_canvas {
+          width: 1200px;
+          height: 5px;
+      }
+      #control_panel {
+          margin-top: 5px;
+
+      }
+
+      progress {
+
+
+      }
+      li.active{
+          font-weight: bold;
+      }
+      #stage_header {
+          float:left;
+      }
+      #player_list {
+          float:right;  
+      }
+
+      #control_panel{
+          width: 70%;
+          display:inline-block;
+      }
+      #start_button: {
+          display: none;
+      }
+
+    </style>
+    <script src="/socket.io/socket.io.js"></script>
+  </head>
+  <body>
+    <div id="stage_header">
+        <h3> Tour de France - Stage 2 - Race Time <span id="race_time">0h 0min 0s</span></h3>
+        <p> Total kms: <span id="km_total"></span>. Km a meta <span id="km_finish"></span></p>
+        <canvas id="canvas"></canvas>
+    </div>
+    <div id="player_list">
+        <button id="start_button">Start Race:</button>
+        Connected Riders:
+        <ul></ul>
+        Classification:
+        <ul></ul>
+    </div>    
+    
+    <div id="profile"><img height="300" width="1210" src="static/img/tdf_2.jpg"></img></div>
+    <canvas id="profile_canvas"></canvas>
+    <div id="control_panel">
+        <div style="width:50%;float:left;">
+            <p> Current Power <input type="range" min="0" max="1800" value="0" class="slider" id="c_power"><span id="act_power">0</span> Watt</p>
+            <p > Average Power <span id="avg_power">0</span> Watt</p>
+        </div> 
+        <div style="width:50%;float:right;">    
+            <p > Current Speed <span id="act_speed">0</span> Km/h on ramp <span id="act_ramp">0</span> %</p>
+            <p > Average Speed <span id="avg_speed">0</span> km/h</p>
+        </div> 
+        <div> 
+            <progress id="aero" max="100" value="100" ></progress> <span>Aerobic Stamina</span> 
+            <br/>
+            <progress id="anaero" max="100" value="100" ></progress> <span>Anaerobic Stamina</span>
+        </div> 
+    </div>
+    
+  </body>
+  <script src="/static/game.js"></script>
+</html>
