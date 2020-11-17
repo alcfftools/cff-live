@@ -41,12 +41,7 @@ socket.on('disconnect', function() {
 // remove disconnected player
     const sessionID = socket.id; //
     playerId = sessionID;
-    //TODO: Reassign master
-    //if (players[playerId].master == true){
-        
-    //}
     delete players [playerId];
-    //console.log("Player ID: " + playerId + "disconnected");
 });
 //});
 
@@ -103,42 +98,28 @@ socket.on('state', function(game) {
     //console.log(players)
     for (var id in players) {
         var player = players[id];
-        // context.fillStyle = player.color;  
-        // context.beginPath();
-        // context.arc(player.x, player.y, 10, 0, 2 * Math.PI);
-        // context.fill();
         
         if(id == playerId){
-        //     if(player.power != null){
-        //         current_power.value = player.power.toFixed(2);
-        //         act_power.innerHTML = player.power.toFixed(2);
-        //         avg_power.innerHTML = player.avg_power.toFixed(2);
-                aero_bar.value = Math.floor(player.aero).toFixed(2);
-                anaero_bar.value = Math.floor(player.anaero).toFixed(2);
-        //         act_speed.innerHTML = player.speed.toFixed(2);
-        //         avg_speed.innerHTML = player.avg_speed.toFixed(2);
-        //         act_ramp.innerHTML = Math.floor(player.ramp).toFixed(2);
-
-        //         km_finish.innerHTML = (race.km_total- player.stage_pos).toFixed(2);
-
-        //         prof_context.fillStyle = player.color;
-        //         prof_context.beginPath();
-        //         prof_context.arc(Math.floor(player.stage_pos*profile_canvas.width/race.km_total), 25, 10, 0, 2 * Math.PI);
-        //         prof_context.fill();
-        //     }
-            players_list.innerHTML += "<li class='active'>"+player.name +"</li>";
+            aero_bar.value = Math.floor(player.aero).toFixed(2);
+            anaero_bar.value = Math.floor(player.anaero).toFixed(2);
+            players_list.innerHTML += "<li class='active'>"+player.name +"(You)";
+            players_list.innerHTML += Object.entries(player.skills).map((el) => el[0] +": " + el[1]).join(",") + "</li>";
         }else{
-            players_list.innerHTML += "<li >"+player.name+"</li>";
-        //     prof_context.fillStyle = player.color;
-        //     prof_context.beginPath();
-        //     prof_context.arc(Math.floor(player.stage_pos*profile_canvas.width/race.km_total), 25, 5, 0, 2 * Math.PI);
-        //     prof_context.fill();
+            players_list.innerHTML += "<li >"+player.name+(player.bot == true ? " <i>(bot)</i>"  : " <i>(human)</i>")+"</li>";
         }
     }
 
     class_list.innerHTML = "";
-    for(var id in race?.classification){
-        class_list.innerHTML += "<li >" + race.classification[id].name + " - " + formatTime(race.classification[id].race_time) + "</li>";
+    let sectors = Object.keys(race.classification);
+    if(sectors !== undefined && sectors.length > 0){
+        let classif = race?.classification[sectors[sectors.length-1]];
+        for(var group in classif){
+            for(var id in classif[group]){
+                class_list.innerHTML += "<li >" + Object.values(classif[group][id])[0].name + " - m.t.</li>"; //+ formatTime(race.classification[id].race_time) + "</li>";
+            }
+            class_list.innerHTML += "<br></br>" + " - XX seg </li>"; //+ formatTime(race.classification[id].race_time) + "</li>";
+
+        }
     }
     if(race.state ==2){
         reset_button.disabled = false;
