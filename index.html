@@ -1,15 +1,24 @@
 <html>
   <head>
-    <title>A Multiplayer Cycling Game</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/css/bootstrap.min.css" integrity="sha384-TX8t27EcRE3e/ihU7zmQxVncDAy5uIKz4rEkgIXeMed4M0jlfIDPvg6uqKI2xXr2" crossorigin="anonymous">
-    <link rel="stylesheet" href="./css/simple.css" rel="stylesheet">
+    <title>CFF Multiplayer Live Game</title>
     <style>
+      #canvas {
+        width: 1200;
+        height: 400;
+        border: 5px solid black;
+      }
+      profile_canvas {
+          width: 1200px;
+          height: 5px;
+      }
       #control_panel {
           margin-top: 5px;
 
       }
 
       progress {
+
+
       }
       li.active{
           font-weight: bold;
@@ -25,7 +34,7 @@
           width: 70%;
           display:inline-block;
       }
-      button#start_button: {
+      #start_button: {
           display: none;
       }
 
@@ -33,82 +42,37 @@
     <script src="/socket.io/socket.io.js"></script>
   </head>
   <body>
-  <body>
-
-  <div id="wrapper">
-
-    <!-- Page Content -->
-    <div id="page-content-wrapper">
-      
-      <div class="container">
-        <div class="row">
-          <div class="full-width">
-            <h3> CFF LIVE </h3>
-          </div>
-        </div>
-        <div class="row">
-          <div class="col-8"> 
-              <div class="full-width" id="stage_header">
-                <h3> Paris Nice - Stage 2 </h3>
-                <br>
-                <p>
-                  Race Time <span id="race_time">0h 0min 0s</span><br>
-                  Turn Remaining Time <span id="turn_time">0h 0min 0s</span>
-                </p>
-                <img src="https://cyclingforfun.org/cff/etapas/vence.jpg"></img>
-              </div>
-              <!--/#stage_header-->
-              <div class="full-width" id="control_panel">
-                <div>
-                    <p> Current Power <input type="range" min="0" max="100" value="60" class="slider" id="c_power"><span id="act_power">60</span> %</p>
-                    <!--<p > Average Power <span id="avg_power">0</span> Watt</p>-->
-                </div> 
-              </div>
-              <!--/#control_panel-->
-
-              <div class="full-width"> 
-                <progress id="aero" max="100" value="100" ></progress> <span>Aerobic Stamina</span> 
-                <br/>
-                <progress id="anaero" max="100" value="100" ></progress> <span>Anaerobic Stamina</span>
-              </div> 
-              <div class="full-width" id="results_list">
-                <p>Next Sector <span id="race_sector"></span></p>
-                Classification:
-                <ul></ul>
-              </div>  
-
-          </div>
-          <!-- main column -->
-          <div class="col-4" id="sidebar">
-            <div id="player_list">
-                <button id="start_button" disabled>Start Race:</button>
-                <button id="reset_button" disabled>Reset Race:</button>
-                Connected Riders:
-                <ul></ul>
-            </div>    
-          </div>    
-        </div>
-        <!-- /#row -->
-      </div>
-      <!-- /#container -->
+    <div id="stage_header">
+        <h3> Tour de France - Stage 2 - Race Time <span id="race_time">0h 0min 0s</span></h3>
+        <p> Total kms: <span id="km_total"></span>. Km a meta <span id="km_finish"></span></p>
+        <canvas id="canvas"></canvas>
     </div>
-    <!-- /#page-content-wrapper -->
-
-  </div>
-  <!-- /#wrapper -->
-
-    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js" integrity="sha384-DfXdz2htPH0lsSSs5nCTpuj/zy4C+OGpamoFVy38MVBnE+IbbVYUew+OrCXaRkfj" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.5.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-ho+j7jyWK8fNQe+A12Hb8AhRq26LrZ/JpcUGGOn+Y7RsweNrtN/tE3MoK7ZeZDyx" crossorigin="anonymous"></script>
-
-    <!-- Menu Toggle Script -->
-    <script>
-        $("#menu-toggle").click(function(e) {
-        e.preventDefault();
-        $("#wrapper").toggleClass("toggled");
-        });
-    </script>
-
-</body>
-
-    <script src="/static/game.js"></script>
+    <div id="player_list">
+        <button id="start_button">Start Race:</button>
+        Connected Riders:
+        <ul></ul>
+        Classification:
+        <ul></ul>
+    </div>    
+    
+    <div id="profile"><img height="300" width="1210" src="static/img/tdf_2.jpg"></img></div>
+    <canvas id="profile_canvas"></canvas>
+    <div id="control_panel">
+        <div style="width:50%;float:left;">
+            <p> Current Power <input type="range" min="0" max="1800" value="0" class="slider" id="c_power"><span id="act_power">0</span> Watt</p>
+            <p > Average Power <span id="avg_power">0</span> Watt</p>
+        </div> 
+        <div style="width:50%;float:right;">    
+            <p > Current Speed <span id="act_speed">0</span> Km/h on ramp <span id="act_ramp">0</span> %</p>
+            <p > Average Speed <span id="avg_speed">0</span> km/h</p>
+        </div> 
+        <div> 
+            <progress id="aero" max="100" value="100" ></progress> <span>Aerobic Stamina</span> 
+            <br/>
+            <progress id="anaero" max="100" value="100" ></progress> <span>Anaerobic Stamina</span>
+        </div> 
+    </div>
+    
+  </body>
+  <script src="/static/game.bak.js"></script>
 </html>

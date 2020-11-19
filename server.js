@@ -3,7 +3,6 @@ var http = require('http');
 var path = require('path');
 var socketIO = require('socket.io');
 var powerSpeed = require('./static/power_v_speed')
-var fs = require('fs');
 //import { CalculateVelocity } from './static/power_v_speed.js';
 
 var app = express();
@@ -11,47 +10,93 @@ var server = http.Server(app);
 var io = socketIO(server);
 var race_idx = 0;
 
+var GAME_PAUSED = true;
+var RACE_FINISHED = false;
+
+CANVAS_HEIGHT = 400;
+CANVAS_WIDTH = 1200;
+
+MIN_POWER = 0;
+MAX_POWER = 1600;
+
+INITIAL_AERO = 10000;
+INITIAL_ANAERO = 10000;
+
+STAGE_DISTANCE = 50; //Stage is 190 km
+PIXEL_SIZE = 1*STAGE_DISTANCE/1200; //Canvas has 1200 px, so 1 pixel is that size;
 REFRESH_RATE = 60; //The game refreshes 60 times per second
+TIME_MULTIPLIER = 25; //Time goes 25x faster than in real life
 
-var STATE = 0; // 0-LOBBY, 1-GANE, 2-END
+POWER_RANGE_1 = 0 //from 0-230 recovering aero (+) and anaero (+++) at full pace
+POWER_RANGE_2 = 230 //from 230-350 no expenditure, recovery of anaerobic (++)
+POWER_RANGE_3 = 350 //350-430 expenditure of aerobic (-)
+POWER_RANGE_4 = 430 //430-500 expenditure of aerobic (--) and anaerobic (--)
+POWER_RANGE_5 = 500 //500+ expenditure of aerobic (-) and anaerobic (---)
 
-const INITIAL_TURN_TIME = 60*1000; //ca. 60 SECS per turn
-NUM_SECTORS = 10
+var ramp = 0;
 
-INITIAL_AERO = 100;
-INITIAL_ANAERO = 100;
+riderNames = [
+    "Eddy Merckx",	
+	"Bernard Hinault",	
+	"Fausto Coppi",	
+	"Jacques Anquetil",	
+	"Gino Bartali",	
+	"Sean Kelly",	
+	"Francesco Moser",	
+	"Roger De Vlaeminck",	
+    "Rik Van Looy",	
+	"Felice Gimondi",	
+	"Miguel Indurain",	
+	"Alfredo Binda",	
+	"Alejandro Valverde",
+	"Costante Girardengo",	
+	"Laurent Jalabert",	
+	"Freddy Maertens",	
+	"Tony Rominger",	
+    "Louison Bobet",	
+	"Ferdi Kübler",	
+	"Giuseppe Saronni",	
+	"Alberto Contador",	
+	"Joop Zoetemelk",	
+	"Erik Zabel",	
+	"Tom Boonen",	
+	"Fabian Cancellara",	
+	"Raymond Poulidor",	
+	"Rik Van Steenbergen",	
+	"Fiorenzo Magni",	
+	"Johan Museeuw",	
+	"Gianni Bugno",	
+	"Paolo Bettini",	
+	"Vincenzo Nibali",	
+	"Jan Raas",
+	"Herman Van Springel",	
+	"Learco Guerra",	
+	"Greg LeMond",	
+	"Henri Pelissier",	
+	"Joaquim Rodríguez",	
+	"Laurent Fignon",	
+	"Briek Schotte",	
+	"Moreno Argentin",	
+	"Franco Bitossi",	
+	"Nicolas Frantz",	
+	"Jan Janssen",	
+	"Stephen Roche",	
+	"Philippe Gilbert",	
+	"Jan Ullrich",	
+    "Mario Cipollini",
+	"Walter Godefroot",
+	"Luis Ocaña"
+]
 
-POWER_RANGE_1 = 0 //from 0-60% recovering aero (+) and anaero (+++) at full pace
-POWER_RANGE_2 = 60 //from 60-70 no expenditure, recovery of anaerobic (++)
-POWER_RANGE_3 = 70 //70-80 expenditure of aerobic (-)
-POWER_RANGE_4 = 80 //80-90 expenditure of aerobic (--) and anaerobic (--)
-POWER_RANGE_5 = 90 //90+ expenditure of aerobic (-) and anaerobic (---)
-
-AEROBIC_RECOVERY_BASE = 5;
-ANAEROBIC_RECOVERY_BASE = 2*AEROBIC_RECOVERY_BASE;
-AEROBIC_EXPENDITURE_BASE = 15;
-ANAEROBIC_EXPENDITURE_BASE = 1.5*AEROBIC_EXPENDITURE_BASE;
-
-var riders = JSON.parse(fs.readFileSync('static/riders.json', 'utf8'));
-
-MAX_PLAYERS = riders.length;
-const PORT = process.env.PORT || 22000;
-
-game = {
-    'race': {
-        'state': STATE,
-        'sector': 1,
-        'remain_t': INITIAL_TURN_TIME,
-        'used_t': 0, 
-        'classification': {}
-    },
-    'players' : {}
+var race = {
+    'km_total' : STAGE_DISTANCE,
+    'race_time' : 0,
+    'classification': [],
 };
 
-let race_sector_splitters = [0.10, 0.05, 0.25, 0.3, 0.2, 0.2, 0.05, 0.2, 0.1, 0.2];
-//let race_sector_splitters = [0.20, 0.20, 0.20, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2];
+MAX_PLAYERS = riderNames.length;
 
-app.set('port', PORT);
+app.set('port', 8000);
 app.use('/static', express.static(__dirname + '/static'));
 
 // Routing
@@ -60,12 +105,17 @@ app.get('/', function(request, response) {
   });
 
   // Starts the server.
-server.listen(PORT, function() {
-    console.log('Starting server on port ' + PORT);
+server.listen(8000, function() {
+    console.log('Starting server on port 8000');
   });
 
-// Add the WebSocket handlers
+  // Add the WebSocket handlers
+// io.on('connection', function(socket) {
+// });
 
+// setInterval(function() {
+//     io.sockets.emit('message', 'hi!');
+//   }, 1000);
 
 randomNum = function(min,max){
     let random = Math.random() * (max - min) + min;
@@ -78,123 +128,128 @@ randomColor = function (){
     return colors[ran];
 }
 
-var players = game.players;
+var players = {};
 idx = 0;
 io.on('connection', function(socket) {
   socket.on('new player', function() {
     if(idx < MAX_PLAYERS){
-        players[socket.id] = initPlayer(riders[idx]);
+        players[socket.id] = {
+            name: riderNames [idx],
+            weight: randomNum(50,90),
+            color: randomColor(),
+            stage_pos : 0,
+            x: 600 - randomNum(5,50),
+            y: randomNum(100,300),
+            power: 0,
+            avg_power: 0,
+            speed: 0,
+            avg_speed: 0,
+            ramp: 0,
+            aero: INITIAL_AERO,
+            anaero: INITIAL_ANAERO
+        };
         if(idx==0){
-            players[socket.id].master = true;
+            players[socket.id]['master'] = true;
         }else {
-            players[socket.id].master = false;
+            players[socket.id]['master'] = false;
         }
         idx +=1;
     }
     io.sockets.emit('new player', players);
   });
-  // New player
-
   socket.on('disconnect', () => {
-    if(players[socket.id]){
-        if(players[socket.id].master == true){
-        //Reassign master
-            let playerIDs = Object.keys(players);
-            let master_idx = playerIDs.findIndex(el => el == socket.id);
-            if(playerIDs.length <= 1){
-                idx=0;
-            }else{
-                let new_master = playerIDs[master_idx+1];
-                players[new_master].master = true;
-            }
-        }
-        delete players[socket.id];
-        io.sockets.emit('disconnect','');
-    }
+    delete players[socket.id];
   });
-  // Disconnect player
-
   socket.on('game_start', function(data) {
-      STATE = 1;
-      let startIndex = Object.keys(players).length;
-      let nrBots = riders.length - startIndex;
-      
-      for(let i = 0; i< nrBots;i++){
-          let botPlayer = initPlayer(riders[startIndex + i])
-          botPlayer.bot = true;
-          players["bot_"+i] = botPlayer;
-      }
+      GAME_PAUSED = !data;
   });
-  socket.on('game_reset', function(data) {
-      if(STATE == 2){
-        STATE = 0;
-        resetGame();
-      }
-});
-  // Game start
-
-  socket.on('strategy', function(data) {
+  socket.on('movement', function(data) {
     var player = players[socket.id] || {};
-    player.strategy = data;
+    if (data.left) {
+      player.y -= 5;
+      if(player.y <= 0){
+          player.y = 0;
+      }
+    }
+    if (data.up) {
+      player.power += 5;
+      if(player.power >= MAX_POWER){
+          player.power = MAX_POWER;
+      }
+    }
+    if (data.right) {
+      player.y += 5;
+      if(player.y >= CANVAS_HEIGHT){
+        player.y = CANVAS_HEIGHT;
+    }
+    }
+    if (data.down) {
+      player.power -= 5;
+      if(player.power <= MIN_POWER){
+        player.power = MIN_POWER;
+      }
+    }
+    player.avg_power = (player.power + player.avg_power*race_idx)/(race_idx+1);
   });
 });
 
-setInterval(function() {
-    if(STATE == 1){
-        refreshGameTimer();
-        
-        if(checkEndSector()){
-            forceBotsDecision();
-            for (player in game.players){
-                refreshPlayerValues(player);
-                game.players[player].value = calculatePlayerValueForSector(game.race.sector, game.players[player])
-                game.players[player].tot_value += game.players[player].value;
-            }
-            let orderedPlayers = orderPlayersByValue();
-            groups = makeGroups(orderedPlayers, race_sector_splitters[game.race.sector - 1]);
-            game.race.classification[game.race.sector] = groups;
-            game.race.sector++;
-            game.race.remain_t = INITIAL_TURN_TIME;
-        }
-        if(checkEndRace()){
-            RACE_FINISHED = true;
-            STATE = 2;
-            game.race.state = 2;
-        }
+refreshPlayerValues = function(player){
+    params = {
+        "units": "metric",
+        "rp_wr": 74.843, //rider weight (kg)
+        "rp_wb": 7.711,  //bike weight (kg)
+        "rp_a": 0.509, //frontal area (m2)
+        "rp_cd": 0.63, //drag coefficient
+        "rp_dtl": 2, //drivetrain loss (%)
+        "ep_crr": 0.005, //coeff of rolling resistance
+        "ep_rho": 1.22601, //air density (kg/m3)
+        "ep_headwind": 0, //speed of headwind (km/h)
+        "ep_g": 0, //grade of the slope (%)
+        "p2v": 200, // power
+        "v2p": 35.41 // goal speed
     }
-    io.sockets.emit('state', game);
-  }, 1000 / REFRESH_RATE);
 
-  refreshPlayerValues = function(playerid){
-    console.log(players[playerid]);
-    let player = players[playerid];
-    let x = player.strategy;
-    x = x !== undefined ? x : 0;
+
+//TODO: This is a simplification. Apply this based on the cyclist profile
+//TODO: Move x coordinate accordingly to cyclist power + weight == speed.
+//to be determined using some "physics" 
+
+//PWR1 from 0-230 recovering aero (+) and anaero (+++) at full pace
+//PWR2 from 230-350 no expenditure, recovery of anaerobic (++)
+//PWR3 350-430 expenditure of aerobic (-)
+//PWR4 430-500 expenditure of aerobic (--) and anaerobic (--)
+//PWR5 500+ expenditure of aerobic (-) and anaerobic (---)
+    var player = players[player];
+    const x = player.power;
+    ANAEROBIC_RECOVERY_REDUCER = REFRESH_RATE;
+    AEROBIC_RECOVERY_REDUCER = 30*REFRESH_RATE;
+    ANAEROBIC_EXPENDITURE_REDUCER = REFRESH_RATE;
+    AEROBIC_EXPENDITURE_REDUCER = 30*REFRESH_RATE;
     switch (true) {
         case (x>= POWER_RANGE_1 && x < POWER_RANGE_2):
             //console.log("Player: " + player.name + ", recovery rythm.");
-            player.anaero += 3*(ANAEROBIC_RECOVERY_BASE);
-            player.aero += AEROBIC_RECOVERY_BASE;
+            player.anaero += 3*(POWER_RANGE_3-x)/ANAEROBIC_RECOVERY_REDUCER;
+            player.aero += (POWER_RANGE_2-x)/AEROBIC_RECOVERY_REDUCER;
             break;
         case (x>= POWER_RANGE_2 && x < POWER_RANGE_3):
             //console.log("Player: " + player.name + ", aerobic rythm.");
-            player.anaero += 2*(ANAEROBIC_RECOVERY_BASE);
-            player.aero -= AEROBIC_EXPENDITURE_BASE;
+            player.anaero += 2*(POWER_RANGE_3-x)/ANAEROBIC_RECOVERY_REDUCER;
+            player.aero -= (x-POWER_RANGE_2)/AEROBIC_EXPENDITURE_REDUCER;
             break;
         case (x>= POWER_RANGE_3 && x < POWER_RANGE_4):
             //console.log("Player: " + player.name + ", ftp rythm.");
             //player.anaero -= (x- POWER_RANGE_3)/ANAEROBIC_EXPENDITURE_REDUCER;
-            player.aero -= 2*AEROBIC_EXPENDITURE_BASE;
+            player.aero -= 2*(x-POWER_RANGE_2)/AEROBIC_EXPENDITURE_REDUCER;
             break;
         case (x>= POWER_RANGE_4 && x < POWER_RANGE_5):
             //console.log("Player: " + player.name + ", vo2max rythm.");
-            player.anaero -= ANAEROBIC_EXPENDITURE_BASE;
-            player.aero -= 2*AEROBIC_EXPENDITURE_BASE;
+            player.anaero -= (x- POWER_RANGE_3)/ANAEROBIC_EXPENDITURE_REDUCER;
+            player.aero -= 2*(x-POWER_RANGE_2)/AEROBIC_EXPENDITURE_REDUCER;
             break;
         case (x>= POWER_RANGE_5 ):
             //console.log("Player: " + player.name + ", fullgas rythm.");
-            player.anaero -= 4*ANAEROBIC_EXPENDITURE_BASE;
-            player.aero -= 2*AEROBIC_EXPENDITURE_BASE;
+            player.anaero -= 4*(x- POWER_RANGE_3)/ANAEROBIC_EXPENDITURE_REDUCER;
+            player.aero -= 2*(x-POWER_RANGE_2)/AEROBIC_EXPENDITURE_REDUCER;
             break;            
         default:    
             console.log("Error with power output of player " + player.name);
@@ -202,108 +257,91 @@ setInterval(function() {
     }
     if(player.aero < 0) {
         player.aero = 0;
-        player.max_aero = player.max_aero/2;
     }
-    if(player.aero > player.max_aero) {
-        player.aero = player.max_aero;
+    if(player.aero > INITIAL_AERO) {
+        player.aero = INITIAL_AERO;
     }
     if(player.anaero < 0) {
         player.anaero = 0;
-        player.max_anaero = player.max_anaero*0.8;
     }
-    if(player.anaero > player.max_anaero) {
-        player.anaero = player.max_anaero;
-    }
-  }
-
-  forceBotsDecision = function(player){
-      // TODO: Choose wisely the strategy of the bots
-      playerArray = Object.entries(players);
-      playerArray.map(el => players[el[0]].strategy = randomNum(55,93));
-  }
-
-  calculatePlayerValueForSector = function(sector, player){
-      //TODO: Based on the sector, and player data, get the value 
-        return randomNum(60,90);
+    if(player.anaero > INITIAL_ANAERO) {
+        player.anaero = INITIAL_ANAERO;
     }
 
-  orderPlayersByValue = function(){
-    // TODO: Order array of players by value
-    playerArray = Object.entries(players);
-    let orderedPlayerArray = playerArray.sort((a,b) => {
-        return (a[1].tot_value < b[1].tot_value) ? 1 : -1;
-    });
-    return orderedPlayerArray;
-  }
-  makeGroups = function(orderedPlayerArray, split_grade){
-      //TODO: group players of the sorted array
-      let max = orderedPlayerArray[0][1].value;
-      let tot_max = orderedPlayerArray[0][1].tot_value;
-      let min = orderedPlayerArray[orderedPlayerArray.length-1][1].value
-      let margin_val = max*split_grade;
-      let group_cut = tot_max - margin_val;
-      let groups = [];
-      let group = []; 
-      for(id in orderedPlayerArray){
-          if(orderedPlayerArray[id][1].tot_value >= group_cut){
-            let p = {};
-            p[orderedPlayerArray[id][0]]=orderedPlayerArray[id][1];
-            group.push(p);
-          }else{
-            groups.push(group);
-            group = [];
-            let p = {};
-            p[orderedPlayerArray[id][0]]=orderedPlayerArray[id][1];
-            group.push(p);
-            group.push(p);
-            group_cut = orderedPlayerArray[id][1].tot_value-margin_val;
-          }
-      }
-      groups.push(group);
-    return groups;
-  }
+    params["rp_wr"] = player.weight;
+    params["ep_g"] = ramp;
+    speed = powerSpeed.CalculateVelocity(player.power, params);
+    player.avg_speed = (player.speed + player.avg_speed*race_idx)/(race_idx+1); 
+    player.speed = speed; 
+    player.ramp = params["ep_g"];
+    distance_covered = TIME_MULTIPLIER * (player.speed/3600) / REFRESH_RATE;
+    player.stage_pos +=  distance_covered; //in km
 
-  refreshGameTimer = function(){
-    game.race.used_t += 1000/REFRESH_RATE;
-    game.race.remain_t -= 1000/REFRESH_RATE;
-  }
-  checkEndSector = function(){
-    if(game.race.remain_t <= 0 ){
-        return true;
-    }
-  }
-  checkEndRace = function(){
-    if(game.race.sector > NUM_SECTORS){
-        return true;
-    }
-  }
+    //FIXME: This is adding up for every rider!!! Wrong
+    race.race_time += TIME_MULTIPLIER * 1000 / REFRESH_RATE;
 
-  resetGame = function(){
-    for (player in players){
-        players[player].max_aero = INITIAL_AERO;
-        players[player].max_anaero = INITIAL_AERO;
-        players[player].aero = INITIAL_AERO;
-        players[player].anaero = INITIAL_AERO;
+    if(player.stage_pos >= STAGE_DISTANCE){
+        player.stage_pos = STAGE_DISTANCE;
+        player.finished = true;
+        player.race_time = race.race_time;
+        race.classification.push(player);
     }
-    game.players = players;
-    game.race.state = STATE;
-    game.race.sector = 1;
-    game.race.remain_t = INITIAL_TURN_TIME;
-    game.race.used_t = 0; 
-    game.race.classification = [];
-  }
+}
 
-  initPlayer = function(rider){
-      return {
-        name : rider.Name,
-        skills: rider,
-        max_aero: INITIAL_AERO,
-        max_anaero: INITIAL_AERO,
-        aero: INITIAL_AERO,
-        anaero: INITIAL_AERO,
-        tot_value: 0
-      }
-  }
+
+//params
+// {
+//     "units": "metric",
+//     "rp_wr": 74.843, //rider weight (kg)
+//     "rp_wb": 7.711,  //bike weight (kg)
+//     "rp_a": 0.509, //frontal area (m2)
+//     "rp_cd": 0.63, //drag coefficient
+//     "rp_dtl": 2, //drivetrain loss (%)
+//     "ep_crr": 0.005, //coeff of rolling resistance
+//     "ep_rho": 1.22601, //air density (kg/m3)
+//     "ep_headwind": 0, //speed of headwind (km/h)
+//     "ep_g": 0, //grade of the slope (%)
+//     "p2v": 200, // power
+//     "v2p": 35.41 // goal speed
+// }
+//function CalculateVelocity(power, params) {
+
+
+setInterval(function() {
+    game = {
+        'race': race,
+        'groups' : {},
+        'players' : players
+    };
+    if(!GAME_PAUSED && !RACE_FINISHED){
+        players_finished = 0;
+        for (player in players){
+            if (!players[player].finished){
+                refreshPlayerValues(player);
+            }else{
+                players_finished++;
+            }
+        }
+        if(players_finished == Object.keys(players).length){
+            RACE_FINISHED = true;
+            game.race.finished = true;
+        }
+        race_idx += 1;
+        if(race_idx % (60*60) == 0){
+            console.log(players);
+        }
+    }
+    io.sockets.emit('state', game);
+    
+  }, 1000 / REFRESH_RATE);
+
+
+//TODO: Remove by really reading race profile at the begining
+setInterval(function() {
+    ramp = randomNum(-3,8);
+}, 5000);
+
+
 //TODO:
 //Create separate scripts and classes:
 //Game.js
