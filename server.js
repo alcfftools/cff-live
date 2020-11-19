@@ -96,7 +96,7 @@ var race = {
 
 MAX_PLAYERS = riderNames.length;
 
-app.set('port', 8000);
+app.set('port', 48000);
 app.use('/static', express.static(__dirname + '/static'));
 
 // Routing
@@ -105,7 +105,7 @@ app.get('/', function(request, response) {
   });
 
   // Starts the server.
-server.listen(8000, function() {
+server.listen(48000, function() {
     console.log('Starting server on port 8000');
   });
 
