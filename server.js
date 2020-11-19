@@ -35,6 +35,8 @@ POWER_RANGE_5 = 500 //500+ expenditure of aerobic (-) and anaerobic (---)
 
 var ramp = 0;
 
+const PORT = process.env.PORT || 22000;
+
 riderNames = [
     "Eddy Merckx",	
 	"Bernard Hinault",	
@@ -96,7 +98,7 @@ var race = {
 
 MAX_PLAYERS = riderNames.length;
 
-app.set('port', 48000);
+app.set('port', PORT);
 app.use('/static', express.static(__dirname + '/static'));
 
 // Routing
@@ -105,7 +107,7 @@ app.get('/', function(request, response) {
   });
 
   // Starts the server.
-server.listen(48000, function() {
+server.listen(PORT, function() {
     console.log('Starting server on port 8000');
   });
 
